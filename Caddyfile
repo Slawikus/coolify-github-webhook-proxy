@@ -6,11 +6,12 @@
 
 :80 {
     route {
+        # GitHub webhook rate limit
         rate_limit {
             zone github_webhook {
                 match {
-                    path /webhooks/source/github/events
                     method POST
+                    path /webhooks/source/github/events
                 }
 
                 key {remote_host}
@@ -19,9 +20,12 @@
             }
         }
 
+        # GitHub webhook endpoint
         @github_events {
             method POST
             path /webhooks/source/github/events
+
+            remote_ip <GITHUB_HOOKS_CIDRS>
         }
 
         handle @github_events {
@@ -32,6 +36,7 @@
             reverse_proxy coolify:8080
         }
 
+        # Interactive GitHub App setup
         @github_install {
             method GET
             path /webhooks/source/github/install*
