@@ -1,10 +1,10 @@
 # Coolify GitHub Webhook Proxy
 
-Minimal Caddy-based proxy for exposing only the Coolify GitHub App endpoints that must be reachable through Tailscale Funnel. The Coolify dashboard and other endpoints can remain private.
+Minimal Caddy-based proxy for exposing only the Coolify GitHub App webhook event endpoint through Tailscale Funnel. The Coolify dashboard, GitHub App setup callbacks, and all other endpoints remain private.
 
 ## Current setup
 
-Tailscale Funnel provides the public HTTPS endpoint and forwards requests to this proxy over HTTP on port 80. Caddy then forwards accepted requests to `coolify:8080`, so both containers must share a Docker network on which `coolify` resolves to the Coolify container.
+Tailscale Funnel provides the public HTTPS endpoint and forwards requests to this proxy over HTTP on port 80. Caddy then forwards accepted webhook event requests to `coolify:8080`, so both containers must share a Docker network on which `coolify` resolves to the Coolify container.
 
 The custom image uses:
 
@@ -17,11 +17,27 @@ Build the image with:
 docker build -t coolify-github-webhook-proxy .
 ```
 
-## Allowed routes
+## GitHub App registration
+
+Do not use the Tailscale Funnel hostname for the initial GitHub App registration or repository installation callbacks. Coolify requires an authenticated browser session for those callbacks, and the Coolify session cookie is scoped to the normal Coolify hostname.
+
+Recommended flow:
+
+1. Register the GitHub App in Coolify using the normal authenticated Coolify hostname.
+2. Complete repository installation/access in GitHub and return to Coolify.
+3. In the GitHub App settings, change only the **Webhook URL** to the Tailscale Funnel endpoint, for example:
+
+   ```text
+   https://your-node.your-tailnet.ts.net:8443/webhooks/source/github/events
+   ```
+
+4. Leave the GitHub App setup/callback URLs on the normal Coolify hostname.
+
+The Funnel-facing proxy is therefore used only for runtime webhook delivery.
+
+## Allowed route
 
 - `POST /webhooks/source/github/events`
-- `GET /webhooks/source/github/install`
-- `GET /webhooks/source/github/redirect`
 
 Everything else returns `404 Not Found` and is not forwarded to Coolify.
 
@@ -29,7 +45,7 @@ Everything else returns `404 Not Found` and is not forwarded to Coolify.
 
 The proxy applies several narrow controls before a request reaches Coolify:
 
-- Only the routes and HTTP methods listed above are forwarded.
+- Only `POST /webhooks/source/github/events` is forwarded.
 - Webhook event requests are limited to 30 requests per one-minute window, keyed by Caddy's `{remote_host}` value.
 - Webhook event request bodies are limited to 5 MB.
 - Request headers are limited to 64 KB for the server.
