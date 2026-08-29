@@ -1,0 +1,57 @@
+{
+    servers {
+        max_header_size 64KB
+    }
+}
+
+:80 {
+    route {
+        rate_limit {
+            zone github_webhook {
+                match {
+                    path /webhooks/source/github/events
+                    method POST
+                }
+
+                key {remote_host}
+                events 30
+                window 1m
+            }
+        }
+
+        @github_events {
+            method POST
+            path /webhooks/source/github/events
+        }
+
+        handle @github_events {
+            request_body {
+                max_size 5MB
+            }
+
+            reverse_proxy coolify:8080
+        }
+
+        @github_install {
+            method GET
+            path /webhooks/source/github/install*
+        }
+
+        handle @github_install {
+            reverse_proxy coolify:8080
+        }
+
+        @github_redirect {
+            method GET
+            path /webhooks/source/github/redirect
+        }
+
+        handle @github_redirect {
+            reverse_proxy coolify:8080
+        }
+
+        handle {
+            respond "Not Found" 404
+        }
+    }
+}
