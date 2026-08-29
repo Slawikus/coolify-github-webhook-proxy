@@ -32,24 +32,6 @@
             reverse_proxy coolify:8080
         }
 
-        @github_install {
-            method GET
-            path /webhooks/source/github/install
-        }
-
-        handle @github_install {
-            reverse_proxy coolify:8080
-        }
-
-        @github_redirect {
-            method GET
-            path /webhooks/source/github/redirect
-        }
-
-        handle @github_redirect {
-            reverse_proxy coolify:8080
-        }
-
         handle {
             respond "Not Found" 404
         }
