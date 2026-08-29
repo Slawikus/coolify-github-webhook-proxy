@@ -34,7 +34,7 @@
 
         @github_install {
             method GET
-            path /webhooks/source/github/install*
+            path /webhooks/source/github/install
         }
 
         handle @github_install {
